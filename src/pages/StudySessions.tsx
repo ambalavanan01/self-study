@@ -3,7 +3,7 @@ import { Timer } from '../components/study/Timer';
 import { SessionHistory } from '../components/study/SessionHistory';
 import type { StudySession } from '../types';
 import { db } from '../services/firebase';
-import { collection, addDoc, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 import { Loader2 } from 'lucide-react';
 
@@ -17,17 +17,21 @@ export default function StudySessions() {
 
         const q = query(
             collection(db, 'study_sessions'),
-            where('userId', '==', currentUser.uid),
-            orderBy('startTime', 'desc')
+            where('userId', '==', currentUser.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const sessionsData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                startTime: doc.data().startTime?.toDate(),
-                endTime: doc.data().endTime?.toDate(),
-            })) as StudySession[];
+            const sessionsData = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    startTime: doc.data().startTime?.toDate(),
+                    endTime: doc.data().endTime?.toDate(),
+                })) as StudySession[];
+
+            // Client-side sorting
+            sessionsData.sort((a, b) => b.startTime.getTime() - a.startTime.getTime());
+
             setSessions(sessionsData);
             setLoading(false);
         });

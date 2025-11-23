@@ -1,12 +1,14 @@
 import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
 import type { TimetableEntry } from '../../types';
 import { Clock, MapPin } from 'lucide-react';
+import { Skeleton } from '../ui/skeleton';
 
 interface UpcomingClassesProps {
     classes: TimetableEntry[];
+    isLoading?: boolean;
 }
 
-export function UpcomingClasses({ classes }: UpcomingClassesProps) {
+export function UpcomingClasses({ classes, isLoading }: UpcomingClassesProps) {
     // Sort classes by start time (assuming they are for today)
     // In a real app, we'd filter for today and sort
     const sortedClasses = [...classes].sort((a, b) =>
@@ -20,7 +22,20 @@ export function UpcomingClasses({ classes }: UpcomingClassesProps) {
             </CardHeader>
             <CardContent>
                 <div className="space-y-4">
-                    {sortedClasses.length === 0 ? (
+                    {isLoading ? (
+                        [1, 2, 3].map((i) => (
+                            <div key={i} className="flex items-center justify-between rounded-lg border p-3 shadow-sm">
+                                <div className="space-y-2">
+                                    <Skeleton className="h-4 w-[120px]" />
+                                    <Skeleton className="h-3 w-[80px]" />
+                                </div>
+                                <div className="space-y-2 flex flex-col items-end">
+                                    <Skeleton className="h-3 w-[100px]" />
+                                    <Skeleton className="h-3 w-[60px]" />
+                                </div>
+                            </div>
+                        ))
+                    ) : sortedClasses.length === 0 ? (
                         <p className="text-sm text-muted-foreground">No classes scheduled for today.</p>
                     ) : (
                         sortedClasses.map((item) => (

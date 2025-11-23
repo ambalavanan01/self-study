@@ -6,7 +6,7 @@ import { TaskCard } from '../components/tasks/TaskCard';
 import { TaskForm } from '../components/tasks/TaskForm';
 import type { Task } from '../types';
 import { db } from '../services/firebase';
-import { collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, updateDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function TaskManager() {
@@ -22,16 +22,20 @@ export default function TaskManager() {
 
         const q = query(
             collection(db, 'tasks'),
-            where('userId', '==', currentUser.uid),
-            orderBy('createdAt', 'desc')
+            where('userId', '==', currentUser.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const tasksData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate() || new Date(),
-            })) as Task[];
+            const tasksData = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate() || new Date(),
+                })) as Task[];
+
+            // Client-side sorting
+            tasksData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
             setTasks(tasksData);
             setLoading(false);
         });

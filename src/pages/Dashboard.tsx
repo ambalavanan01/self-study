@@ -5,7 +5,7 @@ import { UpcomingClasses } from '../components/dashboard/UpcomingClasses';
 import { TaskSummary } from '../components/dashboard/TaskSummary';
 import type { TimetableEntry, Task, Semester } from '../types';
 import { db } from '../services/firebase';
-import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 
 export default function Dashboard() {
     const { currentUser } = useAuth();
@@ -24,12 +24,15 @@ export default function Dashboard() {
                 // Fetch CGPA Data
                 const semestersQuery = query(
                     collection(db, 'semesters'),
-                    where('userId', '==', currentUser.uid),
-                    orderBy('year', 'desc'),
-                    orderBy('term', 'desc')
+                    where('userId', '==', currentUser.uid)
                 );
                 const semestersSnapshot = await getDocs(semestersQuery);
-                const semesters = semestersSnapshot.docs.map(doc => doc.data() as Semester);
+                const semesters = semestersSnapshot.docs
+                    .map(doc => doc.data() as Semester)
+                    .sort((a, b) => {
+                        if (a.year !== b.year) return b.year - a.year;
+                        return b.term.localeCompare(a.term);
+                    });
 
                 if (semesters.length > 0) {
                     const totalPoints = semesters.reduce((acc, sem) => acc + (sem.gpa * sem.totalCredits), 0);
@@ -39,8 +42,7 @@ export default function Dashboard() {
                     setSemesterGpa(semesters[0].gpa); // Most recent semester
                 }
 
-                // Fetch Upcoming Classes (Mock logic for day filtering as Timetable structure is simple)
-                // In a real app, you'd query by day. Here we just fetch all and filter in memory for demo.
+                // Fetch Upcoming Classes
                 const timetableQuery = query(
                     collection(db, 'timetable'),
                     where('userId', '==', currentUser.uid)
@@ -56,18 +58,19 @@ export default function Dashboard() {
                 // Fetch Pending Tasks
                 const tasksQuery = query(
                     collection(db, 'tasks'),
-                    where('userId', '==', currentUser.uid),
-                    where('isCompleted', '==', false),
-                    orderBy('dueDate', 'asc'),
-                    limit(5)
+                    where('userId', '==', currentUser.uid)
                 );
                 const tasksSnapshot = await getDocs(tasksQuery);
-                const tasks = tasksSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    createdAt: doc.data().createdAt?.toDate(),
-                    // Handle dueDate string/date conversion if needed, assuming ISO string in DB
-                } as Task));
+                const tasks = tasksSnapshot.docs
+                    .map(doc => ({
+                        id: doc.id,
+                        ...doc.data(),
+                        createdAt: doc.data().createdAt?.toDate(),
+                    } as Task))
+                    .filter(t => !t.isCompleted)
+                    .sort((a, b) => a.dueDate.localeCompare(b.dueDate))
+                    .slice(0, 5);
+
                 setPendingTasks(tasks);
 
             } catch (error) {
@@ -79,10 +82,6 @@ export default function Dashboard() {
 
         fetchData();
     }, [currentUser]);
-
-    if (loading) {
-        return <div className="p-8 text-center">Loading dashboard...</div>;
-    }
 
     return (
         <div className="space-y-6">
@@ -97,11 +96,12 @@ export default function Dashboard() {
                 cgpa={cgpa}
                 semesterGpa={semesterGpa}
                 totalCredits={totalCredits}
+                isLoading={loading}
             />
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <UpcomingClasses classes={upcomingClasses} />
-                <TaskSummary tasks={pendingTasks} />
+                <UpcomingClasses classes={upcomingClasses} isLoading={loading} />
+                <TaskSummary tasks={pendingTasks} isLoading={loading} />
                 {/* Placeholder for another widget or just empty space */}
                 <div className="hidden lg:block"></div>
             </div>

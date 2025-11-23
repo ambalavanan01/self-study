@@ -5,7 +5,7 @@ import { SemesterList } from '../components/cgpa/SemesterList';
 import { SemesterForm } from '../components/cgpa/SemesterForm';
 import type { Semester } from '../types';
 import { db } from '../services/firebase';
-import { collection, addDoc, onSnapshot, query, where, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function CGPAManager() {
@@ -19,16 +19,22 @@ export default function CGPAManager() {
 
         const q = query(
             collection(db, 'semesters'),
-            where('userId', '==', currentUser.uid),
-            orderBy('year', 'desc'),
-            orderBy('term', 'desc')
+            where('userId', '==', currentUser.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const semestersData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-            })) as Semester[];
+            const semestersData = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                })) as Semester[];
+
+            // Client-side sorting
+            semestersData.sort((a, b) => {
+                if (a.year !== b.year) return b.year - a.year;
+                return b.term.localeCompare(a.term);
+            });
+
             setSemesters(semestersData);
             setLoading(false);
         });

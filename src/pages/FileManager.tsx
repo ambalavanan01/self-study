@@ -7,7 +7,7 @@ import { UploadModal } from '../components/files/UploadModal';
 import type { FileItem } from '../types';
 import { db, storage } from '../services/firebase';
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
-import { collection, addDoc, deleteDoc, doc, onSnapshot, query, orderBy, where } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, onSnapshot, query, where } from 'firebase/firestore';
 import { useAuth } from '../contexts/AuthContext';
 
 export default function FileManager() {
@@ -22,16 +22,20 @@ export default function FileManager() {
 
         const q = query(
             collection(db, 'files'),
-            where('userId', '==', currentUser.uid),
-            orderBy('createdAt', 'desc')
+            where('userId', '==', currentUser.uid)
         );
 
         const unsubscribe = onSnapshot(q, (snapshot) => {
-            const filesData = snapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data(),
-                createdAt: doc.data().createdAt?.toDate() || new Date(),
-            })) as FileItem[];
+            const filesData = snapshot.docs
+                .map(doc => ({
+                    id: doc.id,
+                    ...doc.data(),
+                    createdAt: doc.data().createdAt?.toDate() || new Date(),
+                })) as FileItem[];
+
+            // Client-side sorting
+            filesData.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+
             setFiles(filesData);
             setLoading(false);
         });
